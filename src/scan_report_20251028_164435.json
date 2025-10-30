@@ -1,0 +1,10 @@
+{
+  "target": "http://example.com",
+  "timestamp": "2025-10-28T16:44:34.093516",
+  "vulnerabilities": [],
+  "summary": {
+    "total_vulnerabilities": 0,
+    "xss_found": 0,
+    "sql_injection_found": 0
+  }
+}

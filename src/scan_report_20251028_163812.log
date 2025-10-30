@@ -1,0 +1,52 @@
+================================================================================
+WEB SECURITY SCAN REPORT
+================================================================================
+Target URL: http://testphp.vulnweb.com/artists.php?artist=1
+Scan Time: 2025-10-28T16:38:08.284287
+Total Vulnerabilities Found: 3
+--------------------------------------------------------------------------------
+
+DETAILED VULNERABILITY REPORT:
+----------------------------------------
+
+Vulnerability #1
+--------------------
+Type: XSS (Cross-Site Scripting)
+Severity: Medium
+Description: Possível XSS refletido no parâmetro "artist"
+Method: GET
+URL: http://testphp.vulnweb.com/artists.php?artist=%3Cscript%3Ealert%28%27XSS%27%29%3C%2Fscript%3E
+Parameter: artist
+Payload Used: <script>alert('XSS')</script>
+
+
+Vulnerability #2
+--------------------
+Type: XSS (Cross-Site Scripting)
+Severity: Medium
+Description: Possível XSS em formulário via POST
+Method: POST
+URL: http://testphp.vulnweb.com/search.php?test=query
+Form Action: search.php?test=query
+Payload Used: <script>alert('XSS')</script>
+
+
+Vulnerability #3
+--------------------
+Type: SQL Injection
+Severity: High
+Description: Possível SQL Injection no parâmetro "artist"
+Method: GET
+URL: http://testphp.vulnweb.com/artists.php?artist=%27+OR+%271%27%3D%271
+Parameter: artist
+Payload Used: ' OR '1'='1
+Error Patterns Found: ['SQL syntax.*MySQL']
+
+
+================================================================================
+SCAN SUMMARY
+================================================================================
+XSS Vulnerabilities: 2
+SQL Injection Vulnerabilities: 1
+Total Vulnerabilities: 3
+================================================================================
