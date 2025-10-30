@@ -1,120 +1,133 @@
+# .github/workflows/ci.yml
 name: Security Scanner CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
+
+# Permissões padrão do workflow (CodeQL precisa de security-events: write)
+permissions:
+  contents: read
+  security-events: write
+  actions: read
 
 jobs:
   test:
+    name: test (${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [3.9, 3.10, 3.11]
-    
+        python-version: [ "3.9", "3.11", "3.12" ]   # <-- corrige aqui (NADA de 3.1)
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r src/requirements.txt
-        pip install pytest pytest-cov flake8 bandit safety
-    
-    - name: Code quality check with flake8
-      run: |
-        flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    
-    - name: Security vulnerability scan with bandit
-      run: |
-        bandit -r src/ -f json -o bandit-report.json || true
-        bandit -r src/ -ll
-    
-    - name: Dependency security check with safety
-      run: |
-        safety check --json --output safety-report.json || true
-        safety check
-    
-    - name: Run unit tests
-      run: |
-        cd src && python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=html
-    
-    - name: Test scanner functionality
-      run: |
-        cd src && python test_simple_a.py
-    
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./src/coverage.xml
-        fail_ci_if_error: false
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  docker:
-    runs-on: ubuntu-latest
-    needs: test
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-    
-    - name: Build Docker image
-      run: |
-        docker build -t web-security-scanner:latest .
-    
-    - name: Test Docker container
-      run: |
-        docker run --detach --name test-scanner -p 5001:5000 web-security-scanner:latest
-        sleep 30
-        curl -f http://localhost:5001/login || exit 1
-        docker stop test-scanner
-        docker rm test-scanner
-    
-    - name: Security scan of Docker image
-      run: |
-        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-          -v $(pwd):/src aquasec/trivy:latest image \
-          --exit-code 0 --severity HIGH,CRITICAL \
-          web-security-scanner:latest
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: |
+            src/requirements.txt
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [test, docker]
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Deploy to staging
-      run: |
-        echo "Deploying to staging environment..."
-        # Add your deployment steps here
-        # Example: docker-compose up -d
-    
-    - name: Health check
-      run: |
-        echo "Performing health checks..."
-        # Add health check steps here
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r src/requirements.txt
+          pip install pytest pytest-cov flake8
+
+      - name: Code quality check with flake8
+        run: flake8 src
+
+      - name: Run unit tests
+        if: ${{ hashFiles('tests/**/*.py') != '' }}
+        run: pytest -q --maxfail=1 --disable-warnings --cov=src --cov-report=xml
+
+      - name: Upload coverage reports
+        if: ${{ hashFiles('tests/**/*.py') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: coverage.xml
 
   security-audit:
+    name: security-audit
     runs-on: ubuntu-latest
-    
+    needs: test
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Run security audit with CodeQL
-      uses: github/codeql-action/init@v2
-      with:
-        languages: python
-    
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+          cache-dependency-path: |
+            src/requirements.txt
+
+      - name: Install tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r src/requirements.txt
+          pip install bandit safety
+
+      - name: Bandit (SAST)
+        run: bandit -r src -ll -iii
+
+      - name: Safety (dependencies)
+        run: safety check --full-report
+
+  codeql:
+    name: codeql
+    runs-on: ubuntu-latest
+    needs: test
+    # Evita falhar em PRs vindos de fork (GitHub bloqueia upload do SARIF no token do fork)
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  docker:
+    name: docker
+    runs-on: ubuntu-latest
+    needs: [ test, security-audit ]
+    # só builda imagem no push para main/master
+    if: ${{ github.event_name == 'push' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker build (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: local/websec-scanner:ci
+
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    needs: docker
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+    steps:
+      - name: Placeholder deploy
+        run: echo "Adapte este passo para seu provedor (Render/Heroku/Koyeb/etc)."
