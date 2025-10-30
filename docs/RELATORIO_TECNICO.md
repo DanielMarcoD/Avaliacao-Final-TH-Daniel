@@ -72,20 +72,22 @@ Relatórios versionados (MD/CSV/JSON) com timestamp e hash da execução.
 
 ## 6. Execução
 ### 6.1 Local
---- bash
+``` bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r src/requirements.txt
 export FLASK_APP=src/web_interface_a.py
 python src/web_interface_a.py  # http://localhost:5000
 # login: admin / admin123
----
+```
 
 ### 6.2 Docker
---- bash
-docker build -t websec-scanner:latest .
+``` bash
+docker compose build
 docker compose up -d
-# http://localhost:5000  (login: admin / admin123)
----
+# Acesse http://localhost:5000 (login: admin / admin123)
+#Depois que acabar de usar 
+docker compose down
+```
 
 ### 6.3 Integrações (opcional)
 - **ZAP**: `zap.sh -daemon -port 8090` e configurar host/porta nas envs.  
@@ -101,8 +103,8 @@ docker compose up -d
       ├── report_generator*.py
       └── requirements.txt
     /docs
-      ├── architecture_diagram.png   (exportado do .drawio)
-      ├── flowchart.pdf              (exportado do .drawio)
+      ├── architecture_diagram.png   
+      ├── flowchart.pdf              
     .github/workflows
       └── security_scan.yml
     Dockerfile

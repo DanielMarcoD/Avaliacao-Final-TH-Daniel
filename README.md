@@ -19,7 +19,7 @@ Ferramenta de **avaliação automatizada de segurança web** com foco em OWASP T
 - Docker (opcional) e docker-compose (opcional)
 
 ### Ambiente local
---- bash
+``` bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r src/requirements.txt
 
@@ -30,14 +30,16 @@ python src/web_interface_a.py  # abre em http://localhost:5000
 # Credenciais de demonstração
 # usuário: admin
 # senha:   admin123
----
+```
 
 ### Docker
---- bash
-docker build -t websec-scanner:latest .
+``` bash
+docker compose build
 docker compose up -d
 # Acesse http://localhost:5000 (login: admin / admin123)
----
+#Depois que acabar de usar 
+docker compose down
+```
 
 ### Variáveis de ambiente
 1. Copie `.env.example` para `.env` e ajuste valores (chave do Flask, integrações, etc.).  
@@ -46,7 +48,7 @@ docker compose up -d
 ---
 
 ## Uso via CLI (além do dashboard)
---- bash
+``` bash
 # Ambiente (opcional)
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r src/requirements.txt
@@ -56,7 +58,7 @@ python src/scanner.py --url http://localhost:3000       --out-md reports/securit
 
 # Ajuda
 python src/scanner.py --help
----
+```
 
 ---
 
@@ -107,7 +109,7 @@ python src/scanner.py --help
 
 ## Integrações (opcionais)
 - **ZAP**: iniciar daemon e configurar host/porta nas envs.  
-  --- bash
+  ---bash
   zap.sh -daemon -port 8090
   ---
 - **Nikto/Nmap**: instalar no host/container e habilitar no `scanner_b.py`.

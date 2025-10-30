@@ -1,6 +1,6 @@
-version: '3.8'
 services:
   web:
+    image: websec-scanner:latest   # usa a imagem com a tag que você criou
     build: .
     container_name: enhanced-web-scanner
     ports:
