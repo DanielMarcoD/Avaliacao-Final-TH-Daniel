@@ -100,16 +100,57 @@
             </div>
             <div class="card-body">
                 <form id="scanForm">
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="targetUrl" class="form-label">
+                                <i class="fas fa-link"></i> Target URL
+                            </label>
+                            <input type="url" class="form-control" id="targetUrl" 
+                                   placeholder="https://example.com" required>
+                            <small class="form-text text-muted">Enter the full URL of the website to scan</small>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="timeout" class="form-label">
+                                <i class="fas fa-clock"></i> Request Timeout (seconds)
+                            </label>
+                            <input type="number" class="form-control" id="timeout" 
+                                   placeholder="120" value="120" min="10" max="300">
+                            <small class="form-text text-muted">Time limit for each request</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="maxPaths" class="form-label">
+                                <i class="fas fa-sitemap"></i> Max Paths to Scan
+                            </label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="maxPaths" 
+                                       placeholder="-1" value="-1" min="-1" max="500">
+                                <button class="btn btn-warning" type="button" id="unlimitedBtn" 
+                                        onclick="toggleUnlimited()" title="Enable Unlimited Paths">
+                                    <i class="fas fa-infinity"></i> Unlimited
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">
+                                <span id="pathsHint" style="display: none;">Maximum number of paths (1-500)</span>
+                                <span id="unlimitedWarning" class="text-warning">
+                                    <i class="fas fa-infinity"></i> All paths (default)
+                                </span>
+                            </small>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="maxScanTime" class="form-label">
+                                <i class="fas fa-hourglass-half"></i> Max Total Scan Time (minutes)
+                            </label>
+                            <input type="number" class="form-control" id="maxScanTime" 
+                                   placeholder="Optional" value="" min="1" max="180">
+                            <small class="form-text text-muted">Leave empty for no limit</small>
+                        </div>
+                    </div>
                     <div class="row">
-                        <div class="col-md-8">
-                            <input type="url" class="form-control" id="targetUrl" placeholder="https://example.com" required>
-                        </div>
-                        <div class="col-md-2">
-                            <input type="number" class="form-control" id="timeout" placeholder="20" value="20" min="5" max="60">
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="fas fa-play"></i> Start Scan
+                        <div class="col-md-12">
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="fas fa-play"></i> Start Enhanced Scan
                             </button>
                         </div>
                     </div>
@@ -166,6 +207,7 @@
                                 <th>Date</th>
                                 <th>Vulnerabilities</th>
                                 <th>Risk Score</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="scanHistory">
@@ -199,6 +241,23 @@
                                         <span class="text-muted">N/A</span>
                                     {% endif %}
                                 </td>
+                                <td>
+                                    {% if scan[2] == 'completed' %}
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button class="btn btn-outline-primary" onclick="downloadReport('{{ scan[0] }}', 'json')" title="Download JSON">
+                                            <i class="fas fa-file-code"></i>
+                                        </button>
+                                        <button class="btn btn-outline-success" onclick="downloadReport('{{ scan[0] }}', 'csv')" title="Download CSV">
+                                            <i class="fas fa-file-excel"></i>
+                                        </button>
+                                        <button class="btn btn-outline-info" onclick="downloadReport('{{ scan[0] }}', 'markdown')" title="Download Markdown">
+                                            <i class="fas fa-file-alt"></i>
+                                        </button>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -209,17 +268,78 @@
     </div>
 
     <script>
+        // Global variable to track unlimited mode - default is TRUE (unlimited)
+        let isUnlimitedMode = true;
+        
+        // Toggle unlimited paths mode
+        function toggleUnlimited() {
+            const maxPathsInput = document.getElementById('maxPaths');
+            const unlimitedBtn = document.getElementById('unlimitedBtn');
+            const pathsHint = document.getElementById('pathsHint');
+            const unlimitedWarning = document.getElementById('unlimitedWarning');
+            
+            isUnlimitedMode = !isUnlimitedMode;
+            
+            if (isUnlimitedMode) {
+                // Enable unlimited mode
+                maxPathsInput.value = -1;  // -1 means unlimited
+                maxPathsInput.disabled = true;
+                maxPathsInput.style.backgroundColor = '#fff3cd';
+                unlimitedBtn.classList.remove('btn-outline-warning');
+                unlimitedBtn.classList.add('btn-warning');
+                unlimitedBtn.innerHTML = '<i class="fas fa-check"></i> Unlimited ON';
+                pathsHint.style.display = 'none';
+                unlimitedWarning.style.display = 'block';
+            } else {
+                // Disable unlimited mode
+                maxPathsInput.value = 50;
+                maxPathsInput.disabled = false;
+                maxPathsInput.style.backgroundColor = '';
+                unlimitedBtn.classList.remove('btn-warning');
+                unlimitedBtn.classList.add('btn-outline-warning');
+                unlimitedBtn.innerHTML = '<i class="fas fa-infinity"></i> Unlimited';
+                pathsHint.style.display = 'block';
+                unlimitedWarning.style.display = 'none';
+            }
+        }
+        
+        // Initialize on page load to set unlimited mode as default
+        document.addEventListener('DOMContentLoaded', function() {
+            const maxPathsInput = document.getElementById('maxPaths');
+            maxPathsInput.disabled = true;
+            maxPathsInput.style.backgroundColor = '#fff3cd';
+        });
         // Enhanced scan functionality with real-time updates
         document.getElementById('scanForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
             const url = document.getElementById('targetUrl').value;
             const timeout = document.getElementById('timeout').value;
+            const maxPaths = document.getElementById('maxPaths').value;
+            const maxScanTime = document.getElementById('maxScanTime').value;
+            
+            // Confirmation for unlimited mode
+            if (isUnlimitedMode) {
+                if (!confirm('⚠️ UNLIMITED MODE: This scan will test ALL discovered paths and may take a very long time. Continue?')) {
+                    return;
+                }
+            }
+            
+            const requestData = {
+                url: url, 
+                timeout: parseInt(timeout),
+                max_paths: parseInt(maxPaths)
+            };
+            
+            // Add max_scan_time only if specified
+            if (maxScanTime) {
+                requestData.max_scan_time = parseInt(maxScanTime) * 60;  // Convert minutes to seconds
+            }
             
             fetch('/scan', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({url: url, timeout: parseInt(timeout)})
+                body: JSON.stringify(requestData)
             })
             .then(response => response.json())
             .then(data => {

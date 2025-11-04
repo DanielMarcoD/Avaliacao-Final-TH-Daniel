@@ -9,5 +9,8 @@ services:
       - .env
     volumes:
       - ./reports:/app/reports
-      - ./scanner_db.sqlite:/app/scanner_db.sqlite
+      - scanner_db:/app/db
     restart: unless-stopped
+
+volumes:
+  scanner_db:
