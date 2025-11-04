@@ -215,7 +215,7 @@ class EnhancedWebSecurityScanner:
         self.scan_metadata = {
             'start_time': datetime.now(),
             'target_url': url,
-            'scan_id': hashlib.md5(f"{url}{time.time()}".encode()).hexdigest()[:8],
+            'scan_id': hashlib.md5(f"{url}{time.time()}".encode(), usedforsecurity=False).hexdigest()[:8],
             'scanner_version': 'v3.0-ConceptA',
             'total_requests': 0,
             'max_paths': 'unlimited' if self.is_unlimited else max_paths,

@@ -131,7 +131,7 @@ DIRECTORY_TRAVERSAL_PAYLOADS = [
     "....//....//....//etc/passwd",
     "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",
     "..%252f..%252f..%252fetc%252fpasswd",
-    "....\/....\/....\/etc/passwd",
+    r"....\/....\/....\/etc/passwd",
     "../../../proc/version",
     "../../../../../../etc/shadow"
 ]

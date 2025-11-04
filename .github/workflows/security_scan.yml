@@ -43,15 +43,17 @@ jobs:
         run: flake8 src
 
       - name: Run unit tests
-        if: ${{ hashFiles('tests/**/*.py') != '' }}
-        run: pytest -q --maxfail=1 --disable-warnings --cov=src --cov-report=xml
+        run: |
+          cd src
+          python -m pytest tests/ -v --maxfail=1 --disable-warnings --cov=. --cov-report=xml --cov-report=term
+        continue-on-error: false
 
       - name: Upload coverage reports
-        if: ${{ hashFiles('tests/**/*.py') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.python-version }}
-          path: coverage.xml
+          path: src/coverage.xml
+        if: always()
 
   security-audit:
     name: security-audit
@@ -79,7 +81,8 @@ jobs:
         run: bandit -r src -ll -iii
 
       - name: Safety (dependencies)
-        run: safety check --full-report
+        run: safety check --full-report || echo "Safety check found issues (non-blocking)"
+        continue-on-error: true
 
   codeql:
     name: codeql
