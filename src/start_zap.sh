@@ -30,9 +30,6 @@ echo "   Config: optimized for container"
 # Create ZAP home directory if it doesn't exist
 mkdir -p ~/.ZAP
 
-# Set DISPLAY for headless mode
-export DISPLAY=:99
-
 # Run ZAP with all necessary flags
 exec "$ZAP_PATH" \
     -daemon \
