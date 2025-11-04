@@ -177,6 +177,8 @@ class TestEnhancedWebSecurityScanner(unittest.TestCase):
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.text = '<html><script>alert("XSS")</script></html>'
+        mock_response.headers = {}
+        mock_response.elapsed.total_seconds.return_value = 2.0
         mock_get.return_value = mock_response
         
         # Test URL with parameters
