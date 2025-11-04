@@ -83,15 +83,15 @@ class VulnerabilityRisk:
         """Calculate CVSS-like risk score for vulnerability"""
         base_score = VulnerabilityRisk.VULNERABILITY_SCORES.get(vuln_type, ('MEDIUM', 5.0))[1]
         
-        # Context-based adjustments
+        # Context-based adjustments (smaller multipliers to avoid hitting ceiling)
         if context.get('authentication_required', False):
-            base_score *= 0.8  # Reduce if auth required
+            base_score *= 0.7  # Reduce significantly if auth required
         
         if context.get('public_facing', True):
-            base_score *= 1.1  # Increase if publicly accessible
+            base_score *= 1.05  # Small increase if publicly accessible
             
         if context.get('sensitive_data', False):
-            base_score *= 1.2  # Increase if sensitive data involved
+            base_score *= 1.1  # Moderate increase if sensitive data involved
             
         return min(base_score, 10.0)
     
