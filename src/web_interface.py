@@ -88,26 +88,48 @@ def init_db():
             end_time TIMESTAMP,
             vulnerabilities_count INTEGER DEFAULT 0,
             risk_score REAL DEFAULT 0.0,
+            metadata TEXT,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     ''')
     
-    # Create default company and admin user
+    # Vulnerabilities table - REQUIRED for dashboard charts!
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS vulnerabilities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scan_id INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            risk_score REAL NOT NULL,
+            url TEXT NOT NULL,
+            payload TEXT,
+            description TEXT,
+            evidence TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (scan_id) REFERENCES scans (id)
+        )
+    ''')
+    
+    # Create default company and admin user (only if they don't exist)
     cursor.execute('''
         INSERT OR IGNORE INTO companies (name, domain, industry, subscription_plan) 
         VALUES (?, ?, ?, ?)
     ''', ('TechAcker Demo Corp', 'techacker.com', 'Technology', 'enterprise'))
     
-    admin_hash = generate_password_hash('admin123')
-    cursor.execute('''
-        INSERT OR IGNORE INTO users (username, password_hash, company_id, is_admin) 
-        VALUES (?, ?, ?, ?)
-    ''', ('admin', admin_hash, 1, 1))
+    # Check if admin user already exists
+    cursor.execute('SELECT id FROM users WHERE username = ?', ('admin',))
+    existing_admin = cursor.fetchone()
     
-    # Update admin user to have is_admin=1 if it exists but is_admin is not set
-    cursor.execute('''
-        UPDATE users SET is_admin = 1 WHERE username = 'admin' AND (is_admin IS NULL OR is_admin = 0)
-    ''')
+    if not existing_admin:
+        # Create admin user only if it doesn't exist
+        admin_hash = generate_password_hash('admin123')
+        cursor.execute('''
+            INSERT INTO users (username, password_hash, company_id, is_admin) 
+            VALUES (?, ?, ?, ?)
+        ''', ('admin', admin_hash, 1, 1))
+        print("✅ Admin user created: username='admin', password='admin123', is_admin=1")
+    else:
+        print("ℹ️ Admin user already exists, skipping creation")
     
     conn.commit()
     conn.close()
@@ -129,12 +151,16 @@ def admin_required(f):
         
         conn = sqlite3.connect('scanner_db.sqlite')
         cursor = conn.cursor()
-        cursor.execute('SELECT role FROM users WHERE id = ?', (session['user_id'],))
+        cursor.execute('SELECT role, is_admin FROM users WHERE id = ?', (session['user_id'],))
         user = cursor.fetchone()
         conn.close()
         
-        if not user or user[0] != 'admin':
+        # Check both role='admin' AND is_admin=1
+        if not user or (user[0] != 'admin' and not user[1]):
+            print(f"❌ Admin access denied: user_id={session.get('user_id')}, role={user[0] if user else None}, is_admin={user[1] if user else None}")
             return jsonify({'error': 'Admin access required'}), 403
+        
+        print(f"✅ Admin access granted: user_id={session.get('user_id')}, role={user[0]}, is_admin={user[1]}")
         return f(*args, **kwargs)
     return decorated_function
 
@@ -209,10 +235,16 @@ class EnhancedScanThread(threading.Thread):
             }
             
             # Update database
-            self._update_scan_status('completed', len(vulnerabilities), avg_risk)
+            print(f"🔄 Updating database for scan {self.scan_id}: {len(vulnerabilities)} vulnerabilities, risk={avg_risk:.2f}")
+            self._update_scan_status('completed', len(vulnerabilities), avg_risk, vulnerabilities, metadata)
+            print(f"✅ Database update completed for scan {self.scan_id}")
             
         except Exception as e:
             # Handle scan failure
+            print(f"❌ SCAN ERROR in {self.scan_id}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
             scan_results[self.scan_id] = {
                 'error': str(e),
                 'status': 'failed'
@@ -226,25 +258,76 @@ class EnhancedScanThread(threading.Thread):
             
             self._update_scan_status('failed')
             
-    def _update_scan_status(self, status: str, vuln_count: int = 0, risk_score: float = 0.0):
-        """Update scan status in database"""
-        conn = sqlite3.connect('scanner_db.sqlite')
-        cursor = conn.cursor()
-        
-        if status == 'running':
-            cursor.execute('''
-                UPDATE scans SET status = ?, start_time = CURRENT_TIMESTAMP 
-                WHERE scan_id = ?
-            ''', (status, self.scan_id))
-        elif status in ['completed', 'failed']:
-            cursor.execute('''
-                UPDATE scans SET status = ?, end_time = CURRENT_TIMESTAMP,
-                vulnerabilities_count = ?, risk_score = ?
-                WHERE scan_id = ?
-            ''', (status, vuln_count, risk_score, self.scan_id))
-        
-        conn.commit()
-        conn.close()
+    def _update_scan_status(self, status: str, vuln_count: int = 0, risk_score: float = 0.0, 
+                            vulnerabilities: list = None, metadata: dict = None):
+        """Update scan status in database and save vulnerabilities"""
+        try:
+            print(f"📝 _update_scan_status called: status={status}, vuln_count={vuln_count}, has_vulns={vulnerabilities is not None}")
+            
+            conn = sqlite3.connect('scanner_db.sqlite')
+            cursor = conn.cursor()
+            
+            if status == 'running':
+                cursor.execute('''
+                    UPDATE scans SET status = ?, start_time = CURRENT_TIMESTAMP 
+                    WHERE scan_id = ?
+                ''', (status, self.scan_id))
+                print(f"✅ Scan {self.scan_id} marked as running")
+            elif status in ['completed', 'failed']:
+                # Get the database scan ID (integer primary key)
+                cursor.execute('SELECT id FROM scans WHERE scan_id = ?', (self.scan_id,))
+                scan_db_id = cursor.fetchone()
+                
+                if scan_db_id:
+                    scan_db_id = scan_db_id[0]
+                    print(f"📊 Found scan database ID: {scan_db_id}")
+                    
+                    # Update scan record with metadata as JSON (convert datetime objects first!)
+                    if metadata:
+                        metadata = convert_datetime_to_string(metadata)
+                    metadata_json = json.dumps(metadata) if metadata else None
+                    cursor.execute('''
+                        UPDATE scans SET status = ?, end_time = CURRENT_TIMESTAMP,
+                        vulnerabilities_count = ?, risk_score = ?, metadata = ?
+                        WHERE scan_id = ?
+                    ''', (status, vuln_count, risk_score, metadata_json, self.scan_id))
+                    print(f"✅ Scan {self.scan_id} updated: status={status}, count={vuln_count}")
+                    
+                    # Save individual vulnerabilities to the vulnerabilities table
+                    if status == 'completed' and vulnerabilities:
+                        print(f"💾 Saving {len(vulnerabilities)} vulnerabilities to database...")
+                        for i, vuln in enumerate(vulnerabilities):
+                            cursor.execute('''
+                                INSERT INTO vulnerabilities 
+                                (scan_id, type, severity, risk_score, url, payload, description, evidence)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            ''', (
+                                scan_db_id,
+                                vuln.get('type', 'Unknown'),
+                                vuln.get('severity', 'INFO'),
+                                vuln.get('risk_score', 0.0),
+                                vuln.get('url', ''),
+                                vuln.get('payload', ''),
+                                vuln.get('description', ''),
+                                vuln.get('evidence', '')
+                            ))
+                            if (i + 1) % 10 == 0:
+                                print(f"   📝 Saved {i + 1}/{len(vulnerabilities)} vulnerabilities...")
+                        print(f"✅ Saved {len(vulnerabilities)} vulnerabilities successfully")
+                    elif status == 'completed' and not vulnerabilities:
+                        print(f"⚠️  No vulnerabilities to save (vulnerabilities list is empty or None)")
+                else:
+                    print(f"❌ ERROR: Could not find scan_id {self.scan_id} in database!")
+            
+            conn.commit()
+            conn.close()
+            print(f"✅ Database transaction committed for scan {self.scan_id}")
+            
+        except Exception as e:
+            print(f"❌ ERROR in _update_scan_status: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
 
 # Routes
 @app.route('/')
@@ -302,10 +385,10 @@ def login():
         if user and check_password_hash(user[1], password):
             session['user_id'] = user[0]
             session['username'] = username
-            session['role'] = user[2]
+            session['role'] = user[2] if user[2] else 'user'
             session['is_admin'] = bool(user[3])
             
-
+            print(f"✅ Login successful: user={username}, user_id={user[0]}, is_admin={bool(user[3])}")
             
             # Update last login
             cursor.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', (user[0],))
@@ -315,6 +398,7 @@ def login():
             return jsonify({'success': True, 'redirect': url_for('index')})
         
         conn.close()
+        print(f"❌ Login failed: user={username}, user_found={user is not None}")
         return jsonify({'success': False, 'message': 'Invalid credentials'})
     
     return render_template('login.html')
@@ -443,18 +527,48 @@ def dashboard_stats():
     cursor = conn.cursor()
     
     try:
-        # Get vulnerability distribution (simulated based on scan counts)
+        # Get ACTUAL vulnerability distribution by severity from completed scans
+        # First, check if we have a vulnerabilities table with severity data
         cursor.execute('''
-            SELECT 
-                COUNT(CASE WHEN vulnerabilities_count > 20 THEN 1 END) as high_risk,
-                COUNT(CASE WHEN vulnerabilities_count BETWEEN 10 AND 20 THEN 1 END) as medium_risk,
-                COUNT(CASE WHEN vulnerabilities_count BETWEEN 1 AND 9 THEN 1 END) as low_risk,
-                COUNT(CASE WHEN vulnerabilities_count = 0 THEN 1 END) as info
-            FROM scans 
-            WHERE user_id = ? AND status = "completed"
+            SELECT severity, COUNT(*) as count
+            FROM (
+                SELECT CASE 
+                    WHEN v.risk_score >= 9.0 THEN 'HIGH'
+                    WHEN v.risk_score >= 7.0 THEN 'MEDIUM'
+                    WHEN v.risk_score >= 4.0 THEN 'LOW'
+                    ELSE 'INFO'
+                END as severity
+                FROM vulnerabilities v
+                INNER JOIN scans s ON v.scan_id = s.id
+                WHERE s.user_id = ? AND s.status = 'completed'
+            )
+            GROUP BY severity
         ''', (session['user_id'],))
         
-        distribution = cursor.fetchone()
+        severity_counts = {row[0]: row[1] for row in cursor.fetchall()}
+        
+        # If no vulnerabilities found, try to get from scan metadata
+        if not severity_counts:
+            cursor.execute('''
+                SELECT metadata FROM scans 
+                WHERE user_id = ? AND status = 'completed'
+                ORDER BY start_time DESC LIMIT 1
+            ''', (session['user_id'],))
+            
+            result = cursor.fetchone()
+            if result and result[0]:
+                try:
+                    import json
+                    metadata = json.loads(result[0])
+                    risk_metrics = metadata.get('risk_metrics', {})
+                    severity_counts = {
+                        'HIGH': risk_metrics.get('critical_count', 0) + risk_metrics.get('high_count', 0),
+                        'MEDIUM': risk_metrics.get('medium_count', 0),
+                        'LOW': risk_metrics.get('low_count', 0),
+                        'INFO': 0
+                    }
+                except:
+                    pass
         
         # Get trend data (last 10 scans)
         cursor.execute('''
@@ -471,27 +585,30 @@ def dashboard_stats():
         trend_values = [row[0] or 0 for row in trend_data][::-1]
         
         stats = {
-            'high_risk': distribution[0] or 0,
-            'medium_risk': distribution[1] or 0,
-            'low_risk': distribution[2] or 0,
-            'info': distribution[3] or 0,
+            'high_risk': severity_counts.get('HIGH', 0) + severity_counts.get('CRITICAL', 0),
+            'medium_risk': severity_counts.get('MEDIUM', 0),
+            'low_risk': severity_counts.get('LOW', 0),
+            'info': severity_counts.get('INFO', 0),
             'trend_labels': trend_labels,
             'trend_data': trend_values
         }
         
         conn.close()
+        
+        # Return actual data (even if zeros) - NO MORE FAKE DATA!
         return jsonify(stats)
         
     except Exception as e:
+        print(f"Error getting dashboard stats: {e}")
         conn.close()
-        # Return demo data if no scans available
+        # Return zeros if error - NO FAKE DATA
         return jsonify({
-            'high_risk': 15,
-            'medium_risk': 28,
-            'low_risk': 42,
-            'info': 8,
-            'trend_labels': ['Scan 1', 'Scan 2', 'Scan 3', 'Scan 4', 'Scan 5'],
-            'trend_data': [12, 19, 8, 25, 15]
+            'high_risk': 0,
+            'medium_risk': 0,
+            'low_risk': 0,
+            'info': 0,
+            'trend_labels': [],
+            'trend_data': []
         })
 
 def convert_datetime_to_string(obj):

@@ -4,13 +4,26 @@ services:
     build: .
     container_name: enhanced-web-scanner
     ports:
-      - "5000:5000"
+      - "5000:5000"   # Flask web interface
+      - "8080:8080"   # OWASP ZAP API
     env_file:
       - .env
     volumes:
       - ./reports:/app/reports
       - scanner_db:/app/db
+      - zap_data:/home/scanner/.ZAP  # Persist ZAP data
     restart: unless-stopped
+    # Memory limits for ZAP (needs at least 1GB, recommended 2GB)
+    mem_limit: 2g
+    memswap_limit: 2g
+    # Health check for the web interface
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
 volumes:
   scanner_db:
+  zap_data:

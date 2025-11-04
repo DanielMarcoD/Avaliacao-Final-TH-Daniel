@@ -472,14 +472,21 @@
                 data: {
                     labels: ['High Risk', 'Medium Risk', 'Low Risk', 'Info'],
                     datasets: [{
-                        data: [0, 0, 0, 0],
+                        data: [],  // Start with empty array - no fake data!
                         backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#17a2b8']
                     }]
                 },
                 options: {
                     responsive: true,
                     plugins: {
-                        legend: { position: 'bottom' }
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.parsed;
+                                }
+                            }
+                        }
                     }
                 }
             });
@@ -535,32 +542,46 @@
         function updateCharts(data) {
             if (!vulnerabilityChart || !riskChart) return;
 
-            // Update vulnerability distribution
-            vulnerabilityChart.data.datasets[0].data = [
-                data.high_risk || 15,
-                data.medium_risk || 28,
-                data.low_risk || 42,
-                data.info || 8
-            ];
+            // Update vulnerability distribution - USE REAL DATA (including zeros!)
+            // Use nullish coalescing to only replace undefined/null, NOT zeros
+            const highRisk = data.high_risk ?? 0;
+            const mediumRisk = data.medium_risk ?? 0;
+            const lowRisk = data.low_risk ?? 0;
+            const info = data.info ?? 0;
+            
+            // Check if all values are zero - if so, hide the chart or show a message
+            const totalVulns = highRisk + mediumRisk + lowRisk + info;
+            
+            if (totalVulns === 0) {
+                // When no data, show empty state (Chart.js will display "No data" message)
+                vulnerabilityChart.data.datasets[0].data = [];
+                console.log('No vulnerability data available - chart will show empty state');
+            } else {
+                // Show real data
+                vulnerabilityChart.data.datasets[0].data = [highRisk, mediumRisk, lowRisk, info];
+                console.log('Vulnerability data loaded:', [highRisk, mediumRisk, lowRisk, info]);
+            }
             vulnerabilityChart.update();
 
-            // Update risk trend
-            riskChart.data.labels = data.trend_labels || ['Scan 1', 'Scan 2', 'Scan 3', 'Scan 4', 'Scan 5'];
-            riskChart.data.datasets[0].data = data.trend_data || [12, 19, 8, 25, 15];
+            // Update risk trend - USE REAL DATA (including empty arrays!)
+            riskChart.data.labels = data.trend_labels && data.trend_labels.length > 0 ? data.trend_labels : [];
+            riskChart.data.datasets[0].data = data.trend_data && data.trend_data.length > 0 ? data.trend_data : [];
             riskChart.update();
         }
 
         function updateChartsWithDemoData() {
             if (!vulnerabilityChart || !riskChart) return;
 
-            // Demo vulnerability distribution
-            vulnerabilityChart.data.datasets[0].data = [15, 28, 42, 8];
+            // NO MORE DEMO DATA - Show empty state
+            vulnerabilityChart.data.datasets[0].data = [];
             vulnerabilityChart.update();
+            console.log('No data available - showing empty vulnerability chart');
 
-            // Demo risk trend
-            riskChart.data.labels = ['Last Week', 'This Week', 'Today'];
-            riskChart.data.datasets[0].data = [12, 19, 25];
+            // NO MORE DEMO DATA - Show empty trend
+            riskChart.data.labels = [];
+            riskChart.data.datasets[0].data = [];
             riskChart.update();
+            console.log('No data available - showing empty risk trend chart');
         }
 
         function filterScans(filter) {
