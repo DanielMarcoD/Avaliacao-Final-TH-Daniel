@@ -104,7 +104,7 @@ class VulnerabilityRisk:
             return 'HIGH'
         elif score >= 4.0:
             return 'MEDIUM'
-        elif score >= 0.1:
+        elif score >= 1.0:
             return 'LOW'
         else:
             return 'INFO'
