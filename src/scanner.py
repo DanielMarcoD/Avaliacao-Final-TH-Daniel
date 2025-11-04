@@ -1304,9 +1304,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Exemplos de uso:
-  python scanner_a.py -u http://example.com
-  python scanner_a.py -u https://site.com --timeout 30 --format json,csv
-  python scanner_a.py -u http://test.com --output /path/to/reports/
+  python scanner.py -u http://example.com
+  python scanner.py -u https://site.com --timeout 30 --format json,csv
+  python scanner.py -u http://test.com --output /path/to/reports/
         """
     )
     

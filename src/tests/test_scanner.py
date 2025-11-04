@@ -124,7 +124,7 @@ class TestEnhancedWebSecurityScanner(unittest.TestCase):
         self.assertEqual(self.scanner.scan_metadata['scanner_version'], 'v3.0-ConceptA')
         self.assertIn('target_url', self.scanner.scan_metadata)
     
-    @patch('scanner_a.requests.Session.get')
+    @patch('scanner.requests.Session.get')
     def test_ssl_configuration_scan(self, mock_get):
         """Test SSL/TLS configuration analysis"""
         # Mock HTTPS response
@@ -136,8 +136,8 @@ class TestEnhancedWebSecurityScanner(unittest.TestCase):
         https_scanner = EnhancedWebSecurityScanner("https://test.example.com")
         
         # Mock socket operations for SSL testing
-        with patch('scanner_a.socket.create_connection'), \
-             patch('scanner_a.ssl.create_default_context') as mock_ssl_context:
+        with patch('scanner.socket.create_connection'), \
+             patch('scanner.ssl.create_default_context') as mock_ssl_context:
             
             mock_ssl_socket = Mock()
             mock_ssl_socket.getpeercert.return_value = {'subject': 'test'}
@@ -154,7 +154,7 @@ class TestEnhancedWebSecurityScanner(unittest.TestCase):
             ssl_vulns = [v for v in https_scanner.vulnerabilities if 'SSL' in v['type'] or 'TLS' in v['type']]
             self.assertEqual(len(ssl_vulns), 0)
     
-    @patch('scanner_a.requests.Session.get')
+    @patch('scanner.requests.Session.get')
     def test_security_headers_scan(self, mock_get):
         """Test security headers analysis"""
         # Mock response without security headers
@@ -170,7 +170,7 @@ class TestEnhancedWebSecurityScanner(unittest.TestCase):
         header_vulns = [v for v in self.scanner.vulnerabilities if 'Security Misconfiguration' in v['type']]
         self.assertGreater(len(header_vulns), 0)
     
-    @patch('scanner_a.requests.Session.get')
+    @patch('scanner.requests.Session.get')
     def test_advanced_xss_detection(self, mock_get):
         """Test advanced XSS detection with heuristics"""
         # Mock vulnerable response
@@ -192,7 +192,7 @@ class TestEnhancedWebSecurityScanner(unittest.TestCase):
             self.assertGreater(xss_vulns[0]['risk_score'], 0)
             self.assertIn('heuristic_confidence', xss_vulns[0]['context'])
     
-    @patch('scanner_a.requests.Session.get')
+    @patch('scanner.requests.Session.get')
     def test_comprehensive_scan_performance(self, mock_get):
         """Test comprehensive scan performance and metrics"""
         # Mock normal response
