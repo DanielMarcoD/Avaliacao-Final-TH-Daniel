@@ -1061,19 +1061,20 @@ class EnhancedWebSecurityScanner:
             except Exception as e:
                 print(f"{Fore.YELLOW}⚠️ Aviso ao acessar URL: {e}")
             
-            # Spider the target (com timeout reduzido)
+            # Spider the target (com timeout configurável)
             print(f"{Fore.CYAN}🕷️  Executando spider scan...")
             try:
                 spider_scan_id = zap.spider.scan(self.url)
                 print(f"{Fore.CYAN}   Spider scan ID: {spider_scan_id}")
                 
-                # Wait for spider with max time limit (5 minutes)
-                max_spider_time = 300  # 5 minutes
+                # Wait for spider with max time limit (usar max_scan_time se definido, senão sem limite)
+                # Se max_scan_time estiver definido, usar 40% dele para o spider
+                max_spider_time = int(self.max_scan_time * 0.4) if self.max_scan_time else None
                 spider_start = time.time()
                 
                 while True:
-                    if time.time() - spider_start > max_spider_time:
-                        print(f"{Fore.YELLOW}⏰ Spider timeout (5 min) - continuando...")
+                    if max_spider_time and (time.time() - spider_start > max_spider_time):
+                        print(f"{Fore.YELLOW}⏰ Spider timeout ({max_spider_time}s) - continuando...")
                         break
                     
                     try:
@@ -1090,19 +1091,20 @@ class EnhancedWebSecurityScanner:
             except Exception as spider_error:
                 print(f"{Fore.YELLOW}⚠️ Erro no spider: {spider_error}")
             
-            # Active scan (com timeout reduzido)
+            # Active scan (com timeout configurável)
             print(f"{Fore.CYAN}🎯 Executando active scan...")
             try:
                 ascan_scan_id = zap.ascan.scan(self.url)
                 print(f"{Fore.CYAN}   Active scan ID: {ascan_scan_id}")
                 
-                # Wait for active scan with max time limit (10 minutes)
-                max_ascan_time = 600  # 10 minutes
+                # Wait for active scan with max time limit (usar max_scan_time se definido, senão sem limite)
+                # Se max_scan_time estiver definido, usar 60% dele para o active scan
+                max_ascan_time = int(self.max_scan_time * 0.6) if self.max_scan_time else None
                 ascan_start = time.time()
                 
                 while True:
-                    if time.time() - ascan_start > max_ascan_time:
-                        print(f"{Fore.YELLOW}⏰ Active scan timeout (10 min) - coletando resultados...")
+                    if max_ascan_time and (time.time() - ascan_start > max_ascan_time):
+                        print(f"{Fore.YELLOW}⏰ Active scan timeout ({max_ascan_time}s) - coletando resultados...")
                         break
                     
                     try:
