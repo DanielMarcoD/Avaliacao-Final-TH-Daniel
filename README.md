@@ -21,8 +21,7 @@
 8. [Recomendações de Mitigação](#8-recomendações-de-mitigação)
 9. [Tecnologias Utilizadas](#9-tecnologias-utilizadas)
 10. [Testes e CI/CD](#10-testes-e-cicd)
-11. [Aviso Legal e Ética](#11-aviso-legal-e-ética)
-12. [Documentação Adicional](#12-documentação-adicional)
+11. [Documentação Adicional](#11-documentação-adicional)
 
 ---
 
@@ -1390,9 +1389,9 @@ Docker Build - Imagem construída com sucesso
 ---
 
 
-## 12. Documentação Adicional
+## 11. Documentação Adicional
 
-### 12.1 Diagramas
+### 11.1 Diagramas
 
 **Arquitetura do Sistema:**
 - Localização: `docs/architecture_diagram.png`
@@ -1402,7 +1401,7 @@ Docker Build - Imagem construída com sucesso
 - Localização: `docs/flowchart.pdf`
 - Conteúdo: Fluxo detalhado de execução dos scans, desde a configuração até geração de relatórios
 
-### 12.2 Referências
+### 11.2 Referências
 
 **Documentação Técnica:**
 - OWASP Top 10 2021: https://owasp.org/Top10/
