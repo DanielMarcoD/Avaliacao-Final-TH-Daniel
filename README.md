@@ -939,4 +939,3 @@ Este projeto implementa uma solução completa de avaliação de segurança web 
 
 ---
 
-**Desenvolvido por Daniel Marco para a disciplina Tecnologias Hackers - Insper - 2025**

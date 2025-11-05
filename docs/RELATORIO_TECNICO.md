@@ -760,8 +760,4 @@ Esta ferramenta é **complementar** a um programa de segurança completo:
 
 ---
 
-**Fim do Relatório Técnico**
 
-**Preparado por**: Daniel Marco  
-**Revisão**: v1.0 - Novembro 2025  
-**Contato**: [seu-email@insper.edu.br]
