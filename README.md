@@ -482,48 +482,8 @@ docker logs -f enhanced-web-scanner
 docker compose down
 ```
 
-### 4.3 Instalação Local
 
-```bash
-# 1. Clone o repositório
-git clone https://github.com/DanielMarcoD/Avaliacao-Final-TH-Daniel.git
-cd Avaliacao-Final-TH-Daniel
-
-# 2. Criar ambiente virtual
-python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate     # Windows
-
-# 3. Instalar dependências
-pip install -r src/requirements.txt
-
-# 4. Executar a aplicação web
-python src/web_interface.py
-
-# 5. Acessar o dashboard
-# URL: http://localhost:5000
-# Credenciais padrão: admin / admin123
-```
-
-### 4.4 Uso via Linha de Comando
-
-```bash
-# Ativar ambiente virtual
-source venv/bin/activate
-
-# Executar scan via CLI
-python src/scanner.py \
-    --url http://testphp.vulnweb.com \
-    --timeout 30 \
-    --max-paths 50 \
-    --output reports/
-
-# Ver todas as opções disponíveis
-python src/scanner.py --help
-```
-
-### 4.5 Configuração das Ferramentas Auxiliares
+### 4.3 Configuração das Ferramentas Auxiliares
 
 **OWASP ZAP (Opcional - já incluído no Docker):**
 
@@ -558,7 +518,7 @@ sudo apt-get install nmap
 brew install nmap
 ```
 
-### 4.6 Variáveis de Ambiente
+### 4.4 Variáveis de Ambiente
 
 Copie `.env.example` para `.env` e ajuste conforme necessário:
 
@@ -1193,13 +1153,6 @@ Permissions-Policy: geolocation=(), microphone=()
 
 ### 8.3 Conclusões e Recomendações Estratégicas
 
-#### **Estado Atual de Segurança**
-
-Baseado nos scans realizados em ambientes de teste (DVWA, WebGoat, Juice Shop):
-
-1. **Vulnerabilidades Críticas**: 21.7% das vulnerabilidades encontradas são CRITICAL
-2. **Compliance**: Não-conformidade com OWASP Top 10 2021, PCI DSS 3.2.1
-3. **Risk Score Médio**: 7.82/10 (alto risco)
 
 #### **Recomendações Estratégicas**
 
@@ -1349,25 +1302,8 @@ werkzeug==3.0.0
 4. **AdvancedReportGeneratorA** (5 testes) - Geração de relatórios
 5. **Integration** (2 testes) - Testes end-to-end
 
-### 10.2 Executar Testes
 
-**Executar testes unitários:**
-
-```bash
-# Ativar ambiente virtual
-source venv/bin/activate
-
-# Executar todos os testes
-python -m pytest src/tests/ -v
-
-# Executar teste específico
-python -m pytest src/tests/test_scanner.py -v
-
-# Gerar relatório de cobertura
-python -m pytest src/tests/ --cov=src --cov-report=html
-```
-
-### 10.3 CI/CD Pipeline
+### 10.2 CI/CD Pipeline
 
 O projeto inclui pipeline GitHub Actions (`.github/workflows/security_scan.yml`) que:
 
